@@ -6,10 +6,20 @@ use Illuminate\Http\Request;
 use App\Models\User;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
+/**
+ * @OA\Info(title="User API", version="1.0")
+ */
 class UserController extends Controller
 {
+    /**
+     * @OA\Get(
+     *     path="/users",
+     *     summary="Get all users",
+     *     @OA\Response(response=200, description="List of users"),
+     *     @OA\Response(response=404, description="No users found")
+     * )
+     */
     public function getAllUsers(Request $request){
-
         $pag = User::paginate(10);
 
         if ($pag->isEmpty()) {
@@ -26,14 +36,6 @@ class UserController extends Controller
             ],404);
         }
 
-        $totalUsers = User::count();
-        if ($totalUsers === 0) {
-            return response()->json([
-                'response' => 'error',
-                'message' => 'no users found'
-            ], 404);
-        }
-        
         return response()->json([
             'response'=>'get all users',
             'data'=>[
@@ -42,6 +44,24 @@ class UserController extends Controller
         ],200);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/users",
+     *     summary="Create a new user",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"name", "lastname", "email", "password"},
+     *             @OA\Property(property="name", type="string"),
+     *             @OA\Property(property="lastname", type="string"),
+     *             @OA\Property(property="email", type="string", format="email"),
+     *             @OA\Property(property="password", type="string", format="password")
+     *         )
+     *     ),
+     *     @OA\Response(response=201, description="User created successfully"),
+     *     @OA\Response(response=400, description="Email already exists")
+     * )
+     */
     public function createUser(Request $request)
     {
         $request->validate([
@@ -50,16 +70,6 @@ class UserController extends Controller
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:6',
         ]);
-
-        $email = $request->email;
-        $user = User::where('email', $email)->first();
-
-        if ($user) {
-            return response()->json([
-                'message' => 'email error',
-                'error' => 'email already exists'
-            ], 400);
-        }
 
         $user = new User();
         $user->name = $request->name;
@@ -73,15 +83,23 @@ class UserController extends Controller
             'data' => $user
         ], 201);
     }
-    
+
+    /**
+     * @OA\Get(
+     *     path="/users/{id}",
+     *     summary="Get user by ID",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *     @OA\Response(response=200, description="User found"),
+     *     @OA\Response(response=404, description="User not found")
+     * )
+     */
     public function getUserById(string $id)
     {
         $user = User::find($id);
 
         if (!$user) {
             return response()->json([
-                'message' => 'User not found',
-                'error' => 'error description'
+                'message' => 'User not found'
             ], 404);
         }
 
@@ -91,8 +109,16 @@ class UserController extends Controller
         ], 200);
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/users/{id}",
+     *     summary="Delete user",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *     @OA\Response(response=200, description="User deleted successfully"),
+     *     @OA\Response(response=404, description="User not found")
+     * )
+     */
     public function deleteUser(Request $request, string $id){
-
         $user = User::find($id);
 
         if (!$user) {
@@ -103,14 +129,29 @@ class UserController extends Controller
 
         $user->disabled = true;
 
-
         return response()->json([
             'response' => 'User deleted successfully'
         ], 200);
     }
 
+    /**
+     * @OA\Put(
+     *     path="/users/{id}",
+     *     summary="Update user",
+     *     @OA\Parameter(name="id", in="path", required=true, @OA\Schema(type="string")),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"name", "lastname"},
+     *             @OA\Property(property="name", type="string"),
+     *             @OA\Property(property="lastname", type="string")
+     *         )
+     *     ),
+     *     @OA\Response(response=200, description="User updated successfully"),
+     *     @OA\Response(response=404, description="User not found")
+     * )
+     */
     public function updateUser(Request $request, string $id){
-
         $user = User::find($id);
 
         if (!$user) {
@@ -132,30 +173,5 @@ class UserController extends Controller
             'response' => 'User updated successfully',
             'data' => $user
         ], 200);
-    }
-
-    public function login(Request $request){
-        $credentials = $request->only('email','password');
-
-        $user = User::where('email', $credentials['email'])->first();
-
-        if(!$user){
-            return response()->json([
-                'response' => 'invalid credentials',
-            ], 401);
-        }
-
-        if(!password_verify($credentials['password'], $user->password)){
-            return response()->json([
-                'response' => 'invalid credentials',
-            ], 401);
-        }
-
-        $token = JWTAuth::fromUser($user);
-
-        return response()->json([
-            'response' => 'login successful',
-            'data' => 'token: '.$token
-        ], 201);
     }
 }
