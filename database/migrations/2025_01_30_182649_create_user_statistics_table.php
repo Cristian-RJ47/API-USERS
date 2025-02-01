@@ -17,7 +17,6 @@ return new class extends Migration
             $table->integer('daily_count');
             $table->integer('weekly_countt');
             $table->integer('monthly_count');
-            $table->boolean('disabled')->default(false);
             $table->timestamps();
         });
     }
