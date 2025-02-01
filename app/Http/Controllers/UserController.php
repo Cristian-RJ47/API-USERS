@@ -174,4 +174,45 @@ class UserController extends Controller
             'data' => $user
         ], 200);
     }
+
+    /**
+     * @OA\Post(
+     *     path="/login",
+     *     summary="User login",
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"email", "password"},
+     *             @OA\Property(property="email", type="string", format="email"),
+     *             @OA\Property(property="password", type="string", format="password")
+     *         )
+     *     ),
+     *     @OA\Response(response=201, description="Login successful"),
+     *     @OA\Response(response=401, description="Invalid credentials")
+     * )
+     */
+    public function login(Request $request){
+        $credentials = $request->only('email','password');
+
+        $user = User::where('email', $credentials['email'])->first();
+
+        if(!$user){
+            return response()->json([
+                'response' => 'invalid credentials',
+            ], 401);
+        }
+
+        if(!password_verify($credentials['password'], $user->password)){
+            return response()->json([
+                'response' => 'invalid credentials',
+            ], 401);
+        }
+
+        $token = JWTAuth::fromUser($user);
+
+        return response()->json([
+            'response' => 'login successful',
+            'data' => 'token: '.$token
+        ], 201);
+    }
 }
